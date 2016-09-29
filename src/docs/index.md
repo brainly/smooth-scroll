@@ -43,5 +43,5 @@
 
 <p id="1@#%^-bottom"><a data-scroll data-options='{ "easing": "easeOutCubic" }' href="#">Back to the top</a></p>
 <script>
-	var opts = {};
+	var opts = {speed: 2000};
 </script>
