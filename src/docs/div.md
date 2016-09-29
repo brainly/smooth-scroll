@@ -46,6 +46,7 @@
 </div>
 <script>
 	var opts = {
-		selectorContainer: '.scroll'
+		selectorContainer: '.scroll',
+		speed: 2000,
 	};
 </script>
