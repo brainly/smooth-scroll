@@ -1,13 +1,12 @@
 const root = window;
-var smoothScroll = {}; // Object for public APIs
-var settings, anchor, toggle, fixedHeader, headerHeight, eventTimeout, animationInterval;
+var settings, anchor, fixedHeader, headerHeight, eventTimeout, animationInterval;
 
 // Default settings
 var defaults = {
 	selector: '[data-scroll]',
 	selectorHeader: null,
 	speed: 500,
-	easing: 'easeInOutCubic',
+	easing: 'easeOutCubic',
 	offset: 0,
 	callback: function () { }
 };
@@ -36,18 +35,8 @@ var getHeight = function (elem) {
  */
 var easingPattern = function (type, time) {
 	var pattern;
-	if (type === 'easeInQuad') pattern = time * time; // accelerating from zero velocity
-	if (type === 'easeOutQuad') pattern = time * (2 - time); // decelerating to zero velocity
-	if (type === 'easeInOutQuad') pattern = time < 0.5 ? 2 * time * time : -1 + (4 - 2 * time) * time; // acceleration until halfway, then deceleration
 	if (type === 'easeInCubic') pattern = time * time * time; // accelerating from zero velocity
 	if (type === 'easeOutCubic') pattern = (--time) * time * time + 1; // decelerating to zero velocity
-	if (type === 'easeInOutCubic') pattern = time < 0.5 ? 4 * time * time * time : (time - 1) * (2 * time - 2) * (2 * time - 2) + 1; // acceleration until halfway, then deceleration
-	if (type === 'easeInQuart') pattern = time * time * time * time; // accelerating from zero velocity
-	if (type === 'easeOutQuart') pattern = 1 - (--time) * time * time * time; // decelerating to zero velocity
-	if (type === 'easeInOutQuart') pattern = time < 0.5 ? 8 * time * time * time * time : 1 - 8 * (--time) * time * time * time; // acceleration until halfway, then deceleration
-	if (type === 'easeInQuint') pattern = time * time * time * time * time; // accelerating from zero velocity
-	if (type === 'easeOutQuint') pattern = 1 + (--time) * time * time * time * time; // decelerating to zero velocity
-	if (type === 'easeInOutQuint') pattern = time < 0.5 ? 16 * time * time * time * time * time : 1 + 16 * (--time) * time * time * time * time; // acceleration until halfway, then deceleration
 	return pattern || time; // no easing, no acceleration
 };
 
@@ -100,7 +89,7 @@ var getDocumentHeight = function () {
  * @returns {Object}
  */
 var getDataOptions = function (options) {
-	return !options || !(typeof JSON === 'object' && typeof JSON.parse === 'function') ? {} : JSON.parse(options);
+	return !options || JSON.parse(options);
 };
 
 /**
@@ -134,179 +123,20 @@ var adjustFocus = function (anchor, endLocation, isNum) {
 };
 
 /**
- * Start/stop the scrolling animation
- * @public
- * @param {Node|Number} anchor  The element or position to scroll to
- * @param {Element}     toggle  The element that toggled the scroll event
- * @param {Object}      options
- */
-smoothScroll.animateScroll = function (anchor, toggle, options) {
-
-	// Options and overrides
-	var overrides = getDataOptions(toggle ? toggle.getAttribute('data-options') : null);
-	var animateSettings = {};
-	Object.assign(animateSettings, settings || defaults, options || {}, overrides);
-
-	// Selectors and variables
-	var isNum = Object.prototype.toString.call(anchor) === '[object Number]' ? true : false;
-	var anchorElem = isNum || !anchor.tagName ? null : anchor;
-	if (!isNum && !anchorElem) return;
-	var startLocation = root.pageYOffset; // Current location on the page
-	if (animateSettings.selectorHeader && !fixedHeader) {
-		// Get the fixed header if not already set
-		fixedHeader = document.querySelector(animateSettings.selectorHeader);
-	}
-	if (!headerHeight) {
-		// Get the height of a fixed header if one exists and not already set
-		headerHeight = getHeaderHeight(fixedHeader);
-	}
-	var endLocation = isNum ? anchor : getEndLocation(anchorElem, headerHeight, parseInt((typeof animateSettings.offset === 'function' ? animateSettings.offset() : animateSettings.offset), 10)); // Location to scroll to
-	var distance = endLocation - startLocation; // distance to travel
-	var documentHeight = getDocumentHeight();
-	var timeLapsed = 0;
-	var percentage, position;
-
-	/**
-	 * Stop the scroll animation when it reaches its target (or the bottom/top of page)
-	 * @private
-	 * @param {Number} position Current position on the page
-	 * @param {Number} endLocation Scroll to location
-	 * @param {Number} animationInterval How much to scroll on this loop
-	 */
-	var stopAnimateScroll = function (position, endLocation, animationInterval) {
-		var currentLocation = root.pageYOffset;
-		if (position == endLocation || currentLocation == endLocation || ((root.innerHeight + currentLocation) >= documentHeight)) {
-
-			// Clear the animation timer
-			clearInterval(animationInterval);
-
-			// Bring the anchored element into focus
-			adjustFocus(anchor, endLocation, isNum);
-
-			// Run callback after animation complete
-			animateSettings.callback(anchor, toggle);
-
-		}
-	};
-
-	/**
-	 * Loop scrolling animation
-	 * @private
-	 */
-	var loopAnimateScroll = function () {
-		timeLapsed += 16;
-		percentage = (timeLapsed / parseInt(animateSettings.speed, 10));
-		percentage = (percentage > 1) ? 1 : percentage;
-		position = startLocation + (distance * easingPattern(animateSettings.easing, percentage));
-		root.scrollTo(0, Math.floor(position));
-		stopAnimateScroll(position, endLocation, animationInterval);
-	};
-
-	/**
-	 * Set interval timer
-	 * @private
-	 */
-	var startAnimateScroll = function () {
-		clearInterval(animationInterval);
-		animationInterval = setInterval(loopAnimateScroll, 16);
-	};
-
-	/**
-	 * Reset position to fix weird iOS bug
-	 * @link https://github.com/cferdinandi/smooth-scroll/issues/45
-	 */
-	if (root.pageYOffset === 0) {
-		root.scrollTo(0, 0);
-	}
-
-	// Start scrolling animation
-	startAnimateScroll();
-
-};
-
-/**
  * Handle has change event
  * @private
  */
 var hashChangeHandler = function (event) {
+	anchor = document.getElementById(location.hash.substring(1));
+
 	// Only run if there's an anchor element to scroll to
 	if (!anchor) return;
 
-	// Reset the anchor element's ID
-	anchor.id = anchor.getAttribute('data-scroll-id');
-
 	// Scroll to the anchored content
-	smoothScroll.animateScroll(anchor, toggle);
+	this.animateScroll(anchor);
 
-	// Reset anchor and toggle
+	// Reset anchor
 	anchor = null;
-	toggle = null;
-};
-
-/**
- * If smooth scroll element clicked, animate scroll
- * @private
- */
-var clickHandler = function (event) {
-
-	// Don't run if right-click or command/control + click
-	if (event.button !== 0 || event.metaKey || event.ctrlKey) return;
-
-	// Check if a smooth scroll link was clicked
-	toggle = event.target.closest(settings.selector);
-	if (!toggle || toggle.tagName.toLowerCase() !== 'a') return;
-
-	// Only run if link is an anchor and points to the current page
-	if (toggle.hostname !== root.location.hostname || toggle.pathname !== root.location.pathname || !/#/.test(toggle.href)) return;
-
-	// Get the sanitized hash
-	var hash;
-	try {
-		hash = decodeURIComponent(toggle.hash);
-	} catch (e) {
-		hash = toggle.hash;
-	}
-
-	// If the hash is empty, scroll to the top of the page
-	if (hash === '#') {
-
-		// Prevent default link behavior
-		event.preventDefault();
-
-		// Set the anchored element
-		anchor = document.body;
-
-		// Save or create the ID as a data attribute and remove it (prevents scroll jump)
-		var id = anchor.id ? anchor.id : 'smooth-scroll-top';
-		anchor.setAttribute('data-scroll-id', id);
-		anchor.id = '';
-
-		// If no hash change event will happen, fire manually
-		// Otherwise, update the hash
-		if (root.location.hash.substring(1) === id) {
-			hashChangeHandler();
-		} else {
-			root.location.hash = id;
-		}
-
-		return;
-
-	}
-
-	// Get the anchored element
-	anchor = document.querySelector(hash);
-
-	// If anchored element exists, save the ID as a data attribute and remove it (prevents scroll jump)
-	if (!anchor) return;
-	anchor.setAttribute('data-scroll-id', anchor.id);
-	anchor.id = '';
-
-	// If no hash change event will happen, fire manually
-	if (toggle.hash === root.location.hash) {
-		event.preventDefault();
-		hashChangeHandler();
-	}
-
 };
 
 /**
@@ -324,54 +154,127 @@ var resizeThrottler = function (event) {
 	}
 };
 
-/**
- * Destroy the current initialization.
- * @public
- */
-smoothScroll.destroy = function () {
+class SmoothScroll {
 
-	// If plugin isn't already initialized, stop
-	if (!settings) return;
+	/**
+	 * Initialize Smooth Scroll
+	 * @public
+	 * @param {Object} options User settings
+	 */
+	constructor(options) {
+		// Selectors and variables
+		settings = {};
+		Object.assign(settings, defaults, options || {});
+		fixedHeader = settings.selectorHeader ? document.querySelector(settings.selectorHeader) : null; // Get the fixed header
+		headerHeight = getHeaderHeight(fixedHeader);
 
-	// Remove event listeners
-	document.removeEventListener('click', clickHandler, false);
-	root.removeEventListener('resize', resizeThrottler, false);
+		// Listen for hash changes
+		root.addEventListener('hashchange', hashChangeHandler.bind(this), false);
 
-	// Reset varaibles
-	settings = null;
-	anchor = null;
-	toggle = null;
-	fixedHeader = null;
-	headerHeight = null;
-	eventTimeout = null;
-	animationInterval = null;
-};
-
-/**
- * Initialize Smooth Scroll
- * @public
- * @param {Object} options User settings
- */
-smoothScroll.init = function (options) {
-
-	// Destroy any existing initializations
-	smoothScroll.destroy();
-
-	// Selectors and variables
-	settings = {};
-	Object.assign(settings, defaults, options || {});
-	fixedHeader = settings.selectorHeader ? document.querySelector(settings.selectorHeader) : null; // Get the fixed header
-	headerHeight = getHeaderHeight(fixedHeader);
-
-	// When a toggle is clicked, run the click handler
-	document.addEventListener('click', clickHandler, false);
-
-	// Listen for hash changes
-	root.addEventListener('hashchange', hashChangeHandler, false);
-
-	// If window is resized and there's a fixed header, recalculate its size
-	if (fixedHeader) {
-		root.addEventListener('resize', resizeThrottler, false);
+		// If window is resized and there's a fixed header, recalculate its size
+		if (fixedHeader) {
+			root.addEventListener('resize', resizeThrottler, false);
+		}
 	}
 
-};
+	/**
+	 * Start/stop the scrolling animation
+	 * @public
+	 * @param {Node|Number} anchor  The element or position to scroll to
+	 * @param {Object}      options
+	 */
+	animateScroll(anchor, options) {
+		// Options
+		var animateSettings = {};
+		Object.assign(animateSettings, settings || defaults, options || {});
+
+		// Selectors and variables
+		var isNum = Object.prototype.toString.call(anchor) === '[object Number]' ? true : false;
+		var anchorElem = isNum || !anchor.tagName ? null : anchor;
+		if (!isNum && !anchorElem) return;
+		var startLocation = root.pageYOffset; // Current location on the page
+		if (animateSettings.selectorHeader && !fixedHeader) {
+			// Get the fixed header if not already set
+			fixedHeader = document.querySelector(animateSettings.selectorHeader);
+		}
+		if (!headerHeight) {
+			// Get the height of a fixed header if one exists and not already set
+			headerHeight = getHeaderHeight(fixedHeader);
+		}
+		var endLocation = isNum ? anchor : getEndLocation(anchorElem, headerHeight, parseInt((typeof animateSettings.offset === 'function' ? animateSettings.offset() : animateSettings.offset), 10)); // Location to scroll to
+		var distance = endLocation - startLocation; // distance to travel
+		var documentHeight = getDocumentHeight();
+		var timeLapsed = 0;
+		var percentage, position;
+		var start = null;
+
+		/**
+		 * Loop scrolling animation
+		 * @private
+		 */
+		var loopAnimateScroll = function(timestamp) {
+  			if (!start) start = timestamp;
+  			var progress = timestamp - start;
+			timeLapsed += progress;
+			percentage = (timeLapsed / parseInt(animateSettings.speed, 10));
+			percentage = (percentage > 1) ? 1 : percentage;
+			position = startLocation + (distance * easingPattern(animateSettings.easing, percentage));
+			root.scrollTo(0, Math.floor(position));
+			console.log(percentage);
+
+			var currentLocation = root.pageYOffset;
+			if (position == endLocation || currentLocation == endLocation || ((root.innerHeight + currentLocation) >= documentHeight)) {
+				// Bring the anchored element into focus
+				adjustFocus(anchor, endLocation, isNum);
+
+				// Run callback after animation complete
+				animateSettings.callback(anchor);
+			} else {
+				animationInterval = requestAnimationFrame(loopAnimateScroll);
+			}
+		};
+
+		/**
+		 * Set interval timer
+		 * @private
+		 */
+		var startAnimateScroll = function () {
+			start = null;
+			cancelAnimationFrame(animationInterval);
+			animationInterval = requestAnimationFrame(loopAnimateScroll);
+		};
+
+		/**
+		 * Reset position to fix weird iOS bug
+		 * @link https://github.com/cferdinandi/smooth-scroll/issues/45
+		 */
+		if (root.pageYOffset === 0) {
+			root.scrollTo(0, 0);
+		}
+
+		// Start scrolling animation
+		startAnimateScroll();
+
+	}
+
+	/**
+	 * Destroy the current initialization.
+	 * @public
+	 */
+	destroy() {
+		// If plugin isn't already initialized, stop
+		if (!settings) return;
+
+		// Remove event listeners
+		root.removeEventListener('resize', resizeThrottler, false);
+
+		// Reset varaibles
+		settings = null;
+		anchor = null;
+		fixedHeader = null;
+		headerHeight = null;
+		eventTimeout = null;
+		animationInterval = null;
+	}
+
+}
