@@ -1,5 +1,5 @@
+const root = window;
 var smoothScroll = {}; // Object for public APIs
-var supports = 'querySelector' in document && 'addEventListener' in root; // Feature test
 var settings, anchor, toggle, fixedHeader, headerHeight, eventTimeout, animationInterval;
 
 // Default settings
@@ -260,13 +260,11 @@ var clickHandler = function (event) {
 	if (toggle.hostname !== root.location.hostname || toggle.pathname !== root.location.pathname || !/#/.test(toggle.href)) return;
 
 	// Get the sanitized hash
-	// var hash = decodeURIComponent( escapeCharacters( toggle.hash ) );
-	// console.log(hash);
 	var hash;
 	try {
-		hash = escapeCharacters(decodeURIComponent(toggle.hash));
+		hash = decodeURIComponent(toggle.hash);
 	} catch (e) {
-		hash = escapeCharacters(toggle.hash);
+		hash = toggle.hash;
 	}
 
 	// If the hash is empty, scroll to the top of the page
@@ -356,9 +354,6 @@ smoothScroll.destroy = function () {
  */
 smoothScroll.init = function (options) {
 
-	// feature test
-	if (!supports) return;
-
 	// Destroy any existing initializations
 	smoothScroll.destroy();
 
@@ -380,10 +375,3 @@ smoothScroll.init = function (options) {
 	}
 
 };
-
-
-//
-// Public APIs
-//
-
-export default smoothScroll;
