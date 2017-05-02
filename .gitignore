@@ -1,7 +1,5 @@
-# Node
-node_modules
-test/results
-test/coverage
+demo/node_modules
+demo/*.min.js
 
 ## OS X
 .DS_Store

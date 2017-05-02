@@ -1,0 +1,11 @@
+{
+  "name": "demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "build": "webpack ."
+  },
+  "author": "Konrad Dzwinel <kdzwinel@gmail.com>",
+  "license": "ISC"
+}
